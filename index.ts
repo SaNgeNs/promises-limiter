@@ -1,20 +1,20 @@
-type AsyncFunction<T = any> = (signal: AbortSignal) => Promise<T>;
+export type AsyncFunction<T = any> = (signal: AbortSignal) => Promise<T>;
 
-interface LimitConfig {
+interface LimitConfig<T, E> {
   maxConcurrent: number;
   delayBetweenBatches: number;
   progressiveDelayStep: number;
   maxProgressiveDelay: number;
-  onSuccess?: (result: any) => void;
-  onError?: (error: any) => void;
+  onSuccess?: (result: T) => void;
+  onError?: (error: E) => void;
   onProgress?: (progress: { completed: number; remaining: number; failed: number }) => void;
-  onComplete?: (results: { success: any[]; failed: any[] }) => void;
+  onComplete?: (results: { success: T[]; failed: E[] }) => void;
 }
 
-class Limiter {
-  private requests: AsyncFunction[];
+class Limiter<T = any, E = any> {
+  private requests: AsyncFunction<T>[];
 
-  private config: LimitConfig;
+  private config: LimitConfig<T, E>;
 
   private successCount: number = 0;
 
@@ -24,7 +24,7 @@ class Limiter {
 
   private abortControllers: AbortController[] = [];
 
-  private async executeRequest(req: AsyncFunction): Promise<any> {
+  private async executeRequest(req: AsyncFunction<T>): Promise<T | E> {
     const controller = new AbortController();
     this.abortControllers.push(controller);
     const { signal } = controller;
@@ -34,15 +34,15 @@ class Limiter {
     } catch (error) {
       this.failCount++;
 
-      if (this.config.onError) this.config.onError(error);
+      if (this.config.onError) this.config.onError(error as E);
 
-      return error;
+      return error as E;
     } finally {
       this.abortControllers = this.abortControllers.filter((ctrl) => ctrl !== controller);
     }
   }
 
-  constructor(requests: AsyncFunction[]) {
+  constructor(requests: AsyncFunction<T>[]) {
     this.requests = requests;
     this.config = {
       maxConcurrent: 10,
@@ -68,12 +68,12 @@ class Limiter {
     return this;
   }
 
-  success(callback: (result: any) => void) {
+  success(callback: (result: T) => void) {
     this.config.onSuccess = callback;
     return this;
   }
 
-  error(callback: (error: any) => void) {
+  error(callback: (error: E) => void) {
     this.config.onError = callback;
     return this;
   }
@@ -83,7 +83,7 @@ class Limiter {
     return this;
   }
 
-  complete(callback: (results: { success: any[]; failed: any[] }) => void) {
+  complete(callback: (results: { success: T[]; failed: E[] }) => void) {
     this.config.onComplete = callback;
     return this;
   }
@@ -93,9 +93,9 @@ class Limiter {
     this.abortControllers.forEach((controller) => controller.abort());
   }
 
-  async run(): Promise<{ success: any[]; failed: any[] }> {
-    const successResults: any[] = [];
-    const failedResults: any[] = [];
+  async run(): Promise<{ success: T[]; failed: E[] }> {
+    const successResults: T[] = [];
+    const failedResults: E[] = [];
     let delay = this.config.delayBetweenBatches;
     let currentBatchIndex = 0;
 
@@ -119,11 +119,11 @@ class Limiter {
           if (result && !(result instanceof Error)) {
             this.successCount++;
 
-            if (this.config.onSuccess) this.config.onSuccess(result);
+            if (this.config.onSuccess) this.config.onSuccess(result as T);
 
-            successResults.push(result);
+            successResults.push(result as T);
           } else {
-            failedResults.push(result);
+            failedResults.push(result as E);
           }
         }),
       );
@@ -150,6 +150,6 @@ class Limiter {
   }
 }
 
-export function PromisesLimiter(requests: AsyncFunction[]) {
-  return new Limiter(requests);
+export function PromisesLimiter<T = any, E = any>(requests: AsyncFunction<T>[]) {
+  return new Limiter<T, E>(requests);
 }
