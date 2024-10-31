@@ -1,6 +1,6 @@
 # Promises Limiter
 
-`PromisesLimiter` is a utility that allows you to limit the number of concurrent asynchronous requests, control delays between batches of requests, and handle successful and failed requests.
+`promisesLimiter` is a utility that allows you to limit the number of concurrent asynchronous requests, control delays between batches of requests, and handle successful and failed requests.
 
 ### Example
 
@@ -11,7 +11,7 @@ const requests: AsyncFunction[] = [
   // add more requests
 ];
 
-const limiter = PromisesLimiter(requests)
+const limiter = promisesLimiter(requests)
   .max(5) // maximum number of concurrent requests
   .delay(100) // delay between batches in milliseconds
   .progressiveDelay(50, 500) // progressive delay: step 50ms, max 500ms

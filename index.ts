@@ -131,14 +131,17 @@ class Limiter<T = any, E = any> {
       if (this.config.onProgress) {
         this.config.onProgress({
           completed: this.successCount,
-          remaining: totalRequests - currentBatchIndex,
+          remaining: Math.max(totalRequests - currentBatchIndex, 0),
           failed: this.failCount,
         });
       }
 
       if (currentBatchIndex < totalRequests) {
         await new Promise((resolve) => { setTimeout(resolve, delay); });
-        delay = Math.min(delay + this.config.progressiveDelayStep, this.config.maxProgressiveDelay);
+        delay = Math.min(
+          delay + this.config.progressiveDelayStep,
+          this.config.maxProgressiveDelay || delay,
+        );
       }
     }
 
@@ -150,6 +153,6 @@ class Limiter<T = any, E = any> {
   }
 }
 
-export function PromisesLimiter<T = any, E = any>(requests: AsyncFunction<T>[]) {
+export function promisesLimiter<T = any, E = any>(requests: AsyncFunction<T>[]) {
   return new Limiter<T, E>(requests);
 }
