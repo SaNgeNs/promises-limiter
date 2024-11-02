@@ -1,23 +1,22 @@
-import { promisesLimiter } from '../index';
+import PromisesLimiter from "../index";
 
-describe('Limiter', () => {
+describe('PromisesLimiter', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('should execute requests with success callback', async () => {
-    const mockRequest = jest.fn();
-    const limiter = promisesLimiter<number, Error>([
-      mockRequest, mockRequest, mockRequest,
-    ]);
-
-    mockRequest
+    const mockRequest = jest.fn()
       .mockResolvedValueOnce(1)
       .mockResolvedValueOnce(2)
       .mockResolvedValueOnce(3);
 
-    limiter.success((result) => {
-      expect(result).toBeGreaterThan(0);
+    const limiter = new PromisesLimiter<number, Error>([
+      mockRequest, mockRequest, mockRequest,
+    ], {
+      onSuccess(result) {
+        expect(result).toBeGreaterThan(0);
+      },
     });
 
     const result = await limiter.run();
@@ -28,18 +27,17 @@ describe('Limiter', () => {
 
   it('should handle errors correctly', async () => {
     const error = new Error('Request failed');
-    const mockRequest = jest.fn();
-    const limiter = promisesLimiter<number, Error>([
-      mockRequest, mockRequest, mockRequest,
-    ]);
-
-    mockRequest
+    const mockRequest = jest.fn()
       .mockRejectedValue(error)
       .mockResolvedValueOnce(2)
       .mockResolvedValueOnce(3);
 
-    limiter.error((error) => {
-      expect(error.message).toBe('Request failed');
+    const limiter = new PromisesLimiter<number, Error>([
+      mockRequest, mockRequest, mockRequest,
+    ], {
+      onError(error) {
+        expect(error.message).toBe('Request failed');
+      },
     });
 
     const result = await limiter.run();
@@ -51,9 +49,10 @@ describe('Limiter', () => {
   it('should apply delay between batches', async () => {
     const mockRequest = jest.fn();
 
-    const limiter = promisesLimiter([mockRequest, mockRequest, mockRequest])
-      .max(1)
-      .delay(100);
+    const limiter = new PromisesLimiter([mockRequest, mockRequest, mockRequest], {
+      maxConcurrent: 1,
+      delayBetweenBatches: 100,
+    });
 
     const start = Date.now();
     await limiter.run();
@@ -65,13 +64,15 @@ describe('Limiter', () => {
   it('should apply initial and progressive delays between batches', async () => {
     const mockRequest = jest.fn();
 
-    const limiter = promisesLimiter([
+    const limiter = new PromisesLimiter([
       mockRequest, mockRequest, mockRequest,
       mockRequest, mockRequest, mockRequest,
-    ])
-      .max(1)
-      .delay(100)
-      .progressiveDelay(100, 200);
+    ], {
+      maxConcurrent: 1,
+      delayBetweenBatches: 100,
+      progressiveDelayStep: 100,
+      maxProgressiveDelay: 200,
+    });
 
     const start = Date.now();
     await limiter.run();
@@ -81,15 +82,17 @@ describe('Limiter', () => {
   });
 
   it('should call onProgress callback', async () => {
-    const mockRequest = jest.fn();
-    const limiter = promisesLimiter<number, Error>([
-      mockRequest,
-    ]);
-
+    const mockRequest = jest.fn().mockResolvedValue(1);
     const progressCallback = jest.fn();
-    limiter.progress(progressCallback);
+
+    const limiter = new PromisesLimiter<number, Error>([
+      mockRequest,
+    ], {
+      onProgress(progress) {
+        progressCallback(progress);
+      },
+    });
     
-    mockRequest.mockResolvedValue(1);
     await limiter.run();
 
     expect(progressCallback).toHaveBeenCalled();
@@ -101,36 +104,36 @@ describe('Limiter', () => {
   });
 
   it('should call onComplete callback', async () => {
-    const mockRequest = jest.fn();
-    const limiter = promisesLimiter<number, Error>([
-      mockRequest, mockRequest,
-    ]);
-
-    mockRequest
+    const completeCallback = jest.fn();
+    const mockRequest = jest.fn()
       .mockResolvedValueOnce(1)
       .mockResolvedValueOnce(2);
 
-    const completeCallback = jest.fn();
-    limiter.complete(completeCallback);
+    const limiter = new PromisesLimiter<number, Error>([
+      mockRequest, mockRequest,
+    ], {
+      onComplete(results) {
+        completeCallback(results);
+      },
+    });
+
     await limiter.run();
 
     expect(completeCallback).toHaveBeenCalledWith({ success: [1, 2], failed: [] });
   });
 
   it('should cancel requests', async () => {
-    const mockRequest = jest.fn();
-    const limiter = promisesLimiter<number, Error>([
+    const mockRequest = jest.fn().mockImplementation(() => new Promise((resolve) => {
+      setTimeout(() => {
+        resolve('Done');
+      }, 100);
+    }));
+
+    const limiter = new PromisesLimiter<number, Error>([
       mockRequest, mockRequest, mockRequest,
-    ]);
-
-    mockRequest
-      .mockImplementation(() => new Promise((resolve) => {
-        setTimeout(() => {
-          resolve('Done');
-        }, 100);
-      }));
-
-    limiter.max(1);
+    ], {
+      maxConcurrent: 1,
+    });
 
     setTimeout(() => {
       limiter.cancel();
@@ -143,13 +146,14 @@ describe('Limiter', () => {
   });
 
   it('should handle max concurrent requests', async () => {
-    const mockRequest = jest.fn();
-    const limiter = promisesLimiter<number, Error>([
-      mockRequest, mockRequest, mockRequest,
-    ]);
+    const mockRequest = jest.fn().mockResolvedValue(1);
 
-    mockRequest.mockResolvedValue(1);
-    limiter.max(2);
+    const limiter = new PromisesLimiter<number, Error>([
+      mockRequest, mockRequest, mockRequest,
+    ], {
+      maxConcurrent: 2,
+    });
+
     const result = await limiter.run();
 
     expect(result.success).toHaveLength(3);
@@ -158,7 +162,7 @@ describe('Limiter', () => {
   it('should receive signal in callback', async () => {
     const mockRequest = jest.fn();
 
-    const limiter = promisesLimiter<number, Error>([
+    const limiter = new PromisesLimiter<number, Error>([
       mockRequest,
     ]);
 

@@ -1,33 +1,41 @@
 type AsyncFunction<T = any> = (signal: AbortSignal) => Promise<T>;
-declare class Limiter<T = any, E = any> {
-    private requests;
-    private config;
-    private successCount;
-    private failCount;
-    private isCancelled;
-    private abortControllers;
-    private executeRequest;
-    constructor(requests: AsyncFunction<T>[]);
-    max(concurrent: number): this;
-    delay(milliseconds: number): this;
-    progressiveDelay(step: number, maxDelay: number): this;
-    success(callback: (result: T) => void): this;
-    error(callback: (error: E) => void): this;
-    progress(callback: (progress: {
+interface SuccessHandler<T> {
+    (result: T): void;
+}
+interface ErrorHandler<E> {
+    (error: E): void;
+}
+interface ProgressHandler {
+    (progress: {
         completed: number;
         remaining: number;
         failed: number;
-    }) => void): this;
-    complete(callback: (results: {
+    }): void;
+}
+interface CompletionHandler<T, E> {
+    (results: {
         success: T[];
         failed: E[];
-    }) => void): this;
+    }): void;
+}
+interface LimitConfig<T, E> {
+    maxConcurrent: number;
+    delayBetweenBatches: number;
+    progressiveDelayStep: number;
+    maxProgressiveDelay: number;
+    onSuccess?: SuccessHandler<T>;
+    onError?: ErrorHandler<E>;
+    onProgress?: ProgressHandler;
+    onComplete?: CompletionHandler<T, E>;
+}
+declare class PromisesLimiter<T = any, E = any> {
+    #private;
+    constructor(requests: AsyncFunction<T>[], config?: Partial<LimitConfig<T, E>>);
     cancel(): void;
     run(): Promise<{
         success: T[];
         failed: E[];
     }>;
 }
-declare function promisesLimiter<T = any, E = any>(requests: AsyncFunction<T>[]): Limiter<T, E>;
 
-export { type AsyncFunction, promisesLimiter };
+export { type AsyncFunction, type CompletionHandler, type ErrorHandler, type LimitConfig, type ProgressHandler, type SuccessHandler, PromisesLimiter as default };

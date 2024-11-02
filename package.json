@@ -1,8 +1,28 @@
 {
   "name": "promises-limiter",
   "author": "SaNgeNs",
+  "license": "MIT",
   "version": "0.0.0",
-  "description": "",
+  "description": "PromisesLimiter is a class for limiting concurrent asynchronous requests, allowing them to be executed in batches with control over progress, handling of successful and failed requests.",
+  "keywords": [
+    "promises",
+    "limiter",
+    "async",
+    "concurrency",
+    "batching",
+    "delay",
+    "abort",
+    "javascript",
+    "typescript",
+    "rate-limiting",
+    "progress-callback",
+    "promise-limiter",
+    "async-limiter"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SaNgeNs/promises-limiter"
+  },
   "source": "src/index.ts",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -17,7 +37,6 @@
     "test-coverage": "jest --coverage",
     "prepare": "husky"
   },
-  "license": "ISC",
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "husky": "^9.1.6",
