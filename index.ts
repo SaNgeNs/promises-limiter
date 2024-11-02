@@ -46,8 +46,8 @@ class PromisesLimiter<T = any, E = any> {
       this.#failCount++;
 
       if (this.#config.onError) {
-        this.#config.onError(error as E)
-      };
+        this.#config.onError(error as E);
+      }
 
       return error as E;
     } finally {
@@ -72,6 +72,9 @@ class PromisesLimiter<T = any, E = any> {
   }
 
   async run(): Promise<{ success: T[]; failed: E[] }> {
+    this.#successCount = 0;
+    this.#failCount = 0;
+
     const successResults: T[] = [];
     const failedResults: E[] = [];
     let delay = this.#config.delayBetweenBatches;
@@ -98,23 +101,23 @@ class PromisesLimiter<T = any, E = any> {
             this.#successCount++;
 
             if (this.#config.onSuccess) {
-              this.#config.onSuccess(result as T)
-            };
+              this.#config.onSuccess(result as T);
+            }
 
             successResults.push(result as T);
           } else {
             failedResults.push(result as E);
           }
+
+          if (this.#config.onProgress) {
+            this.#config.onProgress({
+              completed: this.#successCount,
+              remaining: Math.max(totalRequests - (this.#successCount + this.#failCount), 0),
+              failed: this.#failCount,
+            });
+          }
         }),
       );
-
-      if (this.#config.onProgress) {
-        this.#config.onProgress({
-          completed: this.#successCount,
-          remaining: Math.max(totalRequests - currentBatchIndex, 0),
-          failed: this.#failCount,
-        });
-      }
 
       if (currentBatchIndex < totalRequests) {
         await new Promise((resolve) => { setTimeout(resolve, delay); });

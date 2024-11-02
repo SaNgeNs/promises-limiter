@@ -86,20 +86,25 @@ describe('PromisesLimiter', () => {
     const progressCallback = jest.fn();
 
     const limiter = new PromisesLimiter<number, Error>([
-      mockRequest,
+      mockRequest, mockRequest, mockRequest, mockRequest,
+      mockRequest, mockRequest, mockRequest, mockRequest,
     ], {
       onProgress(progress) {
         progressCallback(progress);
       },
+      maxConcurrent: 4,
     });
     
     await limiter.run();
 
     expect(progressCallback).toHaveBeenCalled();
-    expect(progressCallback).toHaveBeenCalledWith({
-      completed: 1,
-      failed: 0,
-      remaining: 0,
+
+    Array(8).fill(8).forEach((max, idx) => {
+      expect(progressCallback).toHaveBeenCalledWith({
+        completed: idx + 1,
+        remaining: max - (idx + 1),
+        failed: 0,
+      });
     });
   });
 
