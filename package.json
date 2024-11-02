@@ -2,7 +2,7 @@
   "name": "promises-limiter",
   "author": "SaNgeNs",
   "license": "MIT",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "PromisesLimiter is a class for limiting concurrent asynchronous requests, allowing them to be executed in batches with control over progress, handling of successful and failed requests.",
   "keywords": [
     "promises",
